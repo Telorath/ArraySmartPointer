@@ -39,33 +39,25 @@ public:
 		Array = Other.Array;
 		Index = Other.Index;
 		IncrementIndex(Index);
+		return *this;
 	}
 	~iArraySmartPointer()
 	{
-		if (Array)
-		{
 			DecrementIndex(Index);
-		}
 	}
 	void IncrementIndex(unsigned int index)
 	{
-		if (!incremented)
+		if (Array)
 		{
-			if (Array)
-			{
-				Array->IncrementIndex(index);
-				incremented = true;
-			}
+			Array->IncrementIndex(index);
+			incremented = true;
 		}
 	}
 	void DecrementIndex(unsigned int index) {
-		if (incremented)
+		if (Array)
 		{
-			if (Array)
-			{
-				Array->DecrementIndex(index);
-				incremented = false;
-			}
+			Array->DecrementIndex(index);
+			incremented = false;
 		}
 	}
 };
@@ -78,85 +70,51 @@ template <typename target> class ArraySmartPointer : iArraySmartPointer
 	{
 		this->Array = Array;
 		this->Index = Index;
-	};
+		IncrementIndex(Index);
+	}
 
 public:
+
 	ArraySmartPointer()
 	{
-	};
+	}
 
-	ArraySmartPointer(target const & other)
+	ArraySmartPointer(const target & other)
 	{
 		*this = ClassArray<target>::Singleton.AddObj(other);
 	};
+	//The object in question may contain data worth having a move constructor for.
 	ArraySmartPointer(target && other)
 	{
+		*this = ClassArray<target>::Singleton.AddObj(std::move(other));
+	}
+
+	ArraySmartPointer& operator=(const target& other)
+	{
 		*this = ClassArray<target>::Singleton.AddObj(other);
-	};
-
-	ArraySmartPointer<target>& operator=(const target& other)
-	{
-		*this = ClassArray<target>::Singleton.AddObj(other);
 		return *this;
 	}
-/*
-	ArraySmartPointer(const ArraySmartPointer & Other)
+	//The object in question may contain data worth having a move assignment operator for.
+	ArraySmartPointer& operator=(target&& other)
 	{
-		if (this != &Other)
-			*this = Other;
-	};
 
-	ArraySmartPointer(ArraySmartPointer && Other)
-	{
-		if (this != &Other)
-			*this = Other;
-	};
-	*/
-	const ArraySmartPointer& operator=(const ArraySmartPointer& Other)
-	{
-		Array = Other.Array;
-		Index = Other.Index;
-		IncrementIndex(Index);
-		return *this;
-	};
-
-#if false
-
-	template <typename othertarget>	ArraySmartPointer(ArraySmartPointer<othertarget>&& Other)
-	{
-		if (this != &Other)
-			*this = Other;
-	}
-
-	template <typename othertarget>	ArraySmartPointer(const ArraySmartPointer<othertarget> & Other)
-	{
-		if (this != &Other)
-			*this = Other;
-	}
-
-	template <typename othertarget> ArraySmartPointer<target>& operator=(const ArraySmartPointer<othertarget>& Other)
-	{
-		target* test = (target*)(Other.operator->());
-		if (test)
-		{
-			Array = Other.Array;
-			Index = Other.Index;
-			IncrementIndex(Index);
-		}
-
+		*this = ClassArray<target>::Singleton.AddObj(std::move(other));
 		return *this;
 	}
-	template <typename othertarget> ArraySmartPointer& operator=(const ArraySmartPointer<othertarget>&& Other)
+
+//Calls the parent's copy constructor, which handles all data.
+	ArraySmartPointer(const ArraySmartPointer & other) : iArraySmartPointer(other)
 	{
-		Array = Other.Array;
-		Index = Other.Index;
 
-		IncrementIndex(Index);
-
+	}
+	//Call's the parent's assignment operator, which handles all data.
+	ArraySmartPointer& operator=(const ArraySmartPointer& other)
+	{
+		iArraySmartPointer::operator=(other);
 		return *this;
 	}
-#endif
 
+	//Returns a pointer to the object in question
 	target* operator->()
 	{
 		if (Array)
@@ -217,13 +175,13 @@ template <typename contained> class ClassArray : iClassArray
 		{
 			NextIndex = Singleton.mReusableIDVector.front();
 			Singleton.mReusableIDVector.pop();
-			Singleton.mVector[NextIndex] = other;
+			Singleton.mVector[NextIndex] = std::move(other);
 
 		}
 		else
 		{
-			NextIndex = Singleton.mVector.size();
-			Singleton.mVector.push_back(other);
+			NextIndex = (unsigned int)Singleton.mVector.size();
+			Singleton.mVector.push_back(std::move(other));
 			Singleton.mRefCountVector.push_back(0);
 		}
 
@@ -234,7 +192,9 @@ template <typename contained> class ClassArray : iClassArray
 	}
 public:
 	void* GetIndex(unsigned int index) { return &(mVector[index]); };
+
 	static void Reserve(unsigned int numitems) { Singleton.mVector.reserve(numitems); Singleton.mRefCountVector.reserve(numitems); }
+	//if object lacks a default constructor then GetNew() isn't an option sadly, but thanks to the magic of templates if we don't call it anywhere this won't try to compile.
 	static ArraySmartPointer<contained> GetNew()
 	{
 		return Singleton.AddObj(contained());

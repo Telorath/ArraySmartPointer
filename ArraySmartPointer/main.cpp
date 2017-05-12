@@ -9,6 +9,18 @@
 
 ClassArray<int> ClassArray<int>::Singleton;
 
+class ClassWithNoDefaultConstructor
+{
+	int Number;
+public:
+	ClassWithNoDefaultConstructor(int DefaultNumber)
+	{
+		Number = DefaultNumber;
+	};
+};
+
+ClassArray<ClassWithNoDefaultConstructor> ClassArray<ClassWithNoDefaultConstructor>::Singleton;
+
 ArraySmartPointer<int> TestingReturnFromFunction(int input)
 {
 	ArraySmartPointer<int> out;
@@ -27,7 +39,7 @@ int main()
 	ArraySmartPointer<int> UnTest;
 	UnTest = TestNum;
 
-
+//	ArraySmartPointer<ClassWithNoDefaultConstructor> ClassTest;
 
 	ArraySmartPointer<int> ShouldBe3 = UnTest;
 
